@@ -1,0 +1,1 @@
+cmd_/home/sajad/OS/PJR/Phase0/my_module.o := ld -m elf_x86_64  -z max-page-size=0x200000    -r -o /home/sajad/OS/PJR/Phase0/my_module.o /home/sajad/OS/PJR/Phase0/driver.o /home/sajad/OS/PJR/Phase0/device_file.o
