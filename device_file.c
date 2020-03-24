@@ -5,15 +5,70 @@
 #include <linux/module.h>  /* THIS_MODULE */
 #include <linux/cdev.h>      /* char device stuff */
 #include <asm/uaccess.h>  /* copy_to_user() */
+#include <linux/uaccess.h>
+#include <linux/slab.h> 
+#define wnum write_num_to_string_arr
+
+static char *fib_arr;
+static long fib_size;
+static char number[8] = "4";
+
+void write_num_to_string_arr(int num, int *offset) {
+	int leap = 6;
+	char buf[leap];
+	snprintf(buf, leap, "%-5d ", num);
+	int j;
+	for (j = 0; j < leap; j++) 
+		fib_arr[*offset + j] = buf[j];
+ 	*offset += leap;
+}
+
+void calculate_fib(int num) {
+	fib_arr = (char*) kmalloc(num * 6 + 2, GFP_KERNEL);
+	int offset = 0;
+    	int fib[num + 2];
+    	fib[0] = 0;
+   	//write_num_to_string_arr(fib[0], &offset, leap);
+    	fib[1] = 1;
+	wnum(fib[1], &offset);
+	int i;
+	for (i = 2; i <= num; i++) {
+        	fib[i] = fib[i - 1] + fib[i - 2];
+		wnum(fib[i], &offset);
+    	}
+	fib_arr[num*6] = '\n';
+	fib_arr[num*6 + 1] = '\0';
+    //	return fib[num];
+}
+
 
 static ssize_t device_file_read(struct file *file_ptr, char __user *user_buffer, size_t count, loff_t *position) {
-	printk( KERN_NOTICE "device file is read at offset = %i, read byters count = %u", (int)*position, (unsigned int) count);
+	kstrtol(number, 10, &fib_size);
+	calculate_fib(fib_size);
+	fib_size = fib_size * 6 + 2;
+	if (*position >= fib_size)
+		return 0;
+	if (count + *position > fib_size)
+		count = fib_size - *position;
+	copy_to_user(user_buffer, fib_arr + *position, count);
+	*position += count;
+	return count;
+}
+
+static ssize_t device_file_write(struct file *file_ptr, const char *user_buffer, size_t count, loff_t *position) {
+	if (*position >= 8) 
+		return 0;
+	if (count + *position > 8)
+		count = 8 - *position;
+	copy_from_user(number + *position, user_buffer, count);
+	*position += count;
 	return count;
 }
 
 static struct file_operations driver_ops = {
 	.owner = THIS_MODULE,
 	.read = device_file_read,
+	.write = device_file_write,
 };
 
 static int device_file_major_number = 0;
